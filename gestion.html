@@ -674,6 +674,8 @@ const ML={cash:"cashM",transfer:"transfer",card:"card"};
 
 /* ---------- Bienvenida y asistente ---------- */
 function hasRealData(){return !S.sample&&(S.pros.length||S.clients.length||S.appts.length)}
+/* "Ver demostración" solo en la demo de Araújo Tech, no en el sistema de un cliente */
+const IS_DEMO_SITE=/demo/i.test(location.pathname)||location.protocol==="file:"||/^(localhost|127\.)/.test(location.hostname);
 function renderWelcome(){
   const back=hasRealData();
   $("#root").innerHTML=`<div class="login"><div class="box wide">
@@ -681,7 +683,7 @@ function renderWelcome(){
     ${S.cfg.logo?brandBlock():`<div class="brand"><div class="logo at-mark">AT</div><b>Araújo Tech</b><span>${LG()==="pt"?"Sistemas":"Sistemas"}</span></div>`}
     <div><h1>${t("welcome")}</h1><p class="help" style="margin:6px 0 0;font-size:14px">${t("welcomeSub")}</p></div>
     <button class="choice" data-act="wzStart">${ic("sparkle")}<span><b>${t("setup")}</b><small>${t("setupSub")}</small></span></button>
-    <button class="choice" data-act="demo">${ic(back?"back":"grid")}<span><b>${t(back?"backToData":"demo")}</b><small>${t(back?"backToDataSub":"demoSub")}</small></span></button>
+    ${back||IS_DEMO_SITE?`<button class="choice" data-act="demo">${ic(back?"back":"grid")}<span><b>${t(back?"backToData":"demo")}</b><small>${t(back?"backToDataSub":"demoSub")}</small></span></button>`:""}
     <p class="help" style="text-align:center;margin:0">Desarrollado por <b>Araújo Tech</b></p></div></div>`;
 }
 const newWz=()=>({step:0,type:"salon",name:"",logo:"",cover:"",brand:TYPE_BRAND.salon,brandTouched:false,phone:"",address:"",team:[{name:"",role:""}],owner:"",pin:""});
