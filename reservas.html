@@ -100,6 +100,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .pillbtn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .team{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
 .mem{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:center}
+.mem .av,.avb .av{overflow:hidden}
 .mem .av{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:20px;color:#fff;background:var(--pc)}
 .mem b{font-size:14px;line-height:1.2}
 .mem small{color:var(--muted);font-size:12px}
@@ -238,6 +239,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 <div id="layer"></div>
 
 <script>
+
 (function(){
 "use strict";
 /* Nube: pegue aquí la misma URL y clave anon del panel. Vacío = datos de ejemplo. */
@@ -258,7 +260,7 @@ const toMin=h=>{const[a,b]=h.split(":").map(Number);return a*60+b};
 const toHM=m=>`${pad(Math.floor(m/60))}:${pad(m%60)}`;
 const gs=n=>"₲ "+Math.round(n).toLocaleString("es-PY");
 const $=s=>document.querySelector(s);
-const ini=n=>esc(String(n||"").split(/\s+/).filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase());
+const ini=n=>esc(String(n||"").split(/\s+/).filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase());const avP=p=>p&&p.photo?`<img src="${p.photo}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`:ini(p.name);
 
 /* Datos de ejemplo (se reemplazan por los del panel cuando la nube está conectada) */
 const H=()=>({0:null,1:["08:00","20:00"],2:["08:00","20:00"],3:["08:00","20:00"],4:["08:00","20:00"],5:["08:00","20:00"],6:["08:00","17:00"]});
@@ -365,7 +367,7 @@ let sb=null;
 function fromPanel(S){if(!S||!S.cfg)return;const live=a=>a.status!=="cancelled"&&a.status!=="noshow";const from=ymd(new Date());
   SALON=Object.assign({},SALON,{name:S.cfg.name,logo:S.cfg.logo||"",cover:S.cfg.cover||"",phone:S.cfg.phone||"",address:S.cfg.address||"",brand:S.cfg.brand,instagram:S.cfg.instagram||"",maps:S.cfg.maps||"",photos:S.cfg.photos||[],step:+S.cfg.step||30,open:S.cfg.open,close:S.cfg.close,lang:S.cfg.lang,policy:S.cfg.policy||""});
   if(S.services&&S.services.length)SERVICES=S.services.map(s=>({id:s.id,name:s.name,cat:s.cat||"General",dur:s.dur,price:s.price,desc:s.desc||""}));
-  const pr=(S.pros||[]).filter(p=>p.active!==false).slice(0,PLAN_PROS||Infinity);if(pr.length)PROS=pr.map(p=>({id:p.id,name:p.name,role:p.role||"",color:p.color,hours:p.hours,svc:p.svc&&p.svc.length?p.svc:null}));
+  const pr=(S.pros||[]).filter(p=>p.active!==false).slice(0,PLAN_PROS||Infinity);if(pr.length)PROS=pr.map(p=>({id:p.id,name:p.name,role:p.role||"",color:p.color,hours:p.hours,svc:p.svc&&p.svc.length?p.svc:null,photo:p.photo||""}));
   PRODUCTS=(S.products||[]).filter(p=>p.web!==false).map(p=>({id:p.id,name:p.name,price:p.price,stock:p.stock,desc:p.desc||"",photo:p.photo||""}));
   BUSY=(S.appts||[]).filter(a=>a.date>=from&&live(a)).map(a=>({p:a.proId,d:a.date,s:a.start,u:a.dur}))}
 async function cloudLoad(){
@@ -413,7 +415,7 @@ function render(){
     h+=`<div class="section"><div class="shopnote">${ic("bag")}<span>${t("shopNote")}</span></div><div class="prods">${PRODUCTS.map(prodCard).join("")}</div></div>`;
   }
   if(st.tab==="team"){
-    h+=`<div class="section"><div class="team">${PROS.map(p=>`<button class="mem" data-pro-start="${p.id}" style="--pc:${p.color}"><span class="av">${ini(p.name)}</span><b>${esc(p.name)}</b><small>${esc(p.role||"")}</small></button>`).join("")}</div></div>`;
+    h+=`<div class="section"><div class="team">${PROS.map(p=>`<button class="mem" data-pro-start="${p.id}" style="--pc:${p.color}"><span class="av">${avP(p)}</span><b>${esc(p.name)}</b><small>${esc(p.role||"")}</small></button>`).join("")}</div></div>`;
   }
   if(st.tab==="info"){
     const dn=t("dayNames"),td=new Date().getDay();
@@ -458,7 +460,7 @@ function renderSheet(){
       ${SERVICES.filter(s=>st.pro==="any"||!(PROS.find(p=>p.id===st.pro)||{}).svc||(PROS.find(p=>p.id===st.pro).svc.includes(s.id))).map(s=>{const on=st.svc.includes(s.id);return `<button class="pick ${on?"on":""}" data-svc="${s.id}" aria-pressed="${on}"><span class="tx"><b>${esc(s.name)}</b><small>${s.dur} ${t("min")} · ${gs(s.price)}</small></span><span class="ck">${on?ic("check"):""}</span></button>`}).join("")}</div>
       <div class="lbl">${t("pickPro")}</div>
       <div class="avs"><button class="avb any ${st.pro==="any"?"on":""}" data-pro="any"><span class="av">${ic("users")}</span>${t("any")}<small>${t("anyS")}</small></button>
-      ${(st.svc.length?el2:PROS).map(p=>`<button class="avb ${st.pro===p.id?"on":""}" data-pro="${p.id}" style="--pc:${p.color}"><span class="av">${ini(p.name)}</span>${esc(p.name.split(" ")[0])}<small>${esc(p.role||"")}</small></button>`).join("")}</div>
+      ${(st.svc.length?el2:PROS).map(p=>`<button class="avb ${st.pro===p.id?"on":""}" data-pro="${p.id}" style="--pc:${p.color}"><span class="av">${avP(p)}</span>${esc(p.name.split(" ")[0])}<small>${esc(p.role||"")}</small></button>`).join("")}</div>
       ${st.svc.length&&!el2.length?`<div class="warn">${t("noPro")}</div>`:""}
       ${shopOn()&&st.svc.length?`<div class="lbl">${t("upsellT")}</div><small class="note" style="margin-top:-8px">${t("upsellS")}</small><div class="upsell">${PRODUCTS.map(prodCard).join("")}</div>`:""}`;
     foot=`<div class="sum">${sumHtml()}</div><button class="btn" data-next="1" ${st.svc.length&&eligible().length?"":"disabled"}>${t("next")}</button>`;
