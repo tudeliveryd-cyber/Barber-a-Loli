@@ -243,6 +243,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 (function(){
 "use strict";
 /* Nube: pegue aquí la misma URL y clave anon del panel. Vacío = datos de ejemplo. */
+const AG_ID="loreni",FB_KEY="AIzaSyBCz2X9BOgO4UZKaXppxlGbiN59qBvUR_U",FS="https://firestore.googleapis.com/v1/projects/araujotech-catalogos/databases/(default)/documents/";
+const AG_ON=!!AG_ID&&location.protocol!=="file:"&&!/demo/i.test(location.pathname);
 const SB_URL="", SB_KEY="";
 const P={bag:'<path d="M6 7h12l1 13H5L6 7z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/>',plus:'<path d="M12 5v14M5 12h14"/>',minus:'<path d="M5 12h14"/>',check:'<path d="m5 12.5 4.5 4.5L19 7"/>',pin:'<path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/>',
  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',chat:'<path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/>',
@@ -370,7 +372,15 @@ function fromPanel(S){if(!S||!S.cfg)return;const live=a=>a.status!=="cancelled"&
   const pr=(S.pros||[]).filter(p=>p.active!==false).slice(0,PLAN_PROS||Infinity);if(pr.length)PROS=pr.map(p=>({id:p.id,name:p.name,role:p.role||"",color:p.color,hours:p.hours,svc:p.svc&&p.svc.length?p.svc:null,photo:p.photo||""}));
   PRODUCTS=(S.products||[]).filter(p=>p.web!==false).map(p=>({id:p.id,name:p.name,price:p.price,stock:p.stock,desc:p.desc||"",photo:p.photo||""}));
   BUSY=(S.appts||[]).filter(a=>a.date>=from&&live(a)).map(a=>({p:a.proId,d:a.date,s:a.start,u:a.dur}))}
+async function agGet(path){const r=await fetch(FS+path+"?key="+FB_KEY,{cache:"no-store"});if(!r.ok)return null;const j=await r.json();return j.fields||null}
+async function agLoad(){try{const f=await agGet("agendaPub/"+AG_ID);if(!f||!f.json)return false;let I=JSON.parse(f.json.stringValue);
+  const need=new Set();const sc=v=>{if(typeof v==="string"&&v.startsWith("img:"))need.add(v.slice(4));else if(Array.isArray(v))v.forEach(sc);else if(v&&typeof v==="object")Object.values(v).forEach(sc)};sc(I);
+  const IM={};await Promise.all([...need].map(async h=>{try{const g=await agGet("agendas/"+AG_ID+"/img/"+h);IM[h]=g&&g.d?g.d.stringValue:""}catch(e){IM[h]=""}}));
+  const w=v=>{if(typeof v==="string"&&v.startsWith("img:"))return IM[v.slice(4)]||"";if(Array.isArray(v))return v.map(w);if(v&&typeof v==="object"){const r={};for(const k in v)r[k]=w(v[k]);return r}return v};I=w(I);
+  SALON=Object.assign({},SALON,I.cfg,{step:+I.cfg.step||30});SERVICES=I.services.map(s=>Object.assign({cat:"General",desc:""},s));PROS=I.pros;BUSY=I.busy||[];PRODUCTS=I.products||[];AG_LOADED=true;applyBrand();render();return true}catch(e){console.warn(e);return false}}
+let AG_LOADED=false;
 async function cloudLoad(){
+  if(AG_ON){if(await agLoad())return}
   if(!SB_URL||!SB_KEY){try{const S=JSON.parse(localStorage.getItem("salon_aurora_v2"));if(S&&S.cfg){fromPanel(S);applyBrand();render()}}catch(e){}return}
   await new Promise(res=>{if(window.supabase)return res();const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";s.onload=res;s.onerror=res;document.head.appendChild(s)});
   if(!window.supabase)return;
@@ -382,6 +392,8 @@ async function cloudLoad(){
   }catch(e){console.warn(e)}
 }
 async function cloudSave(){
+  if(AG_ON&&AG_LOADED){try{const body={nombre:st.name,telefono:st.phone,servicios:st.svc,profesional:st.pro,fecha:st.date,hora:st.time,duracion:dur(),precio:total(),...(cartN()?{productos:cartItems()}:{})};
+    const r=await fetch(FS+"agendas/"+AG_ID+"/reservas?key="+FB_KEY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields:{json:{stringValue:JSON.stringify(body)},at:{stringValue:new Date().toISOString()},p:{booleanValue:false}}})});return r.ok}catch(e){return false}}
   if(!sb)return true;
   try{const {error}=await sb.from("reservas").insert({nombre:st.name,telefono:st.phone,servicios:st.svc,profesional:st.pro,fecha:st.date,hora:st.time,duracion:dur(),precio:total(),...(cartN()?{productos:cartItems()}:{})});return !error}catch(e){return false}
 }

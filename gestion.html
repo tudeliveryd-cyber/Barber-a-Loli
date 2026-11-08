@@ -373,6 +373,13 @@ code.sql{display:block;white-space:pre-wrap;font-family:ui-monospace,SFMono-Regu
 /* Nube del negocio: al instalar para un cliente, pegue aquí la URL y la clave anon de su proyecto Supabase.
    Vacío = se puede conectar desde Ajustes. */
 const SB_URL_FIXED="", SB_KEY_FIXED="";
+/* Nube Araújo Tech (Firebase). AG_ID = código del cliente (el mismo de la licencia en el admin). */
+const AG_ID="loreni";
+const FB_CFG={apiKey:"AIzaSyBCz2X9BOgO4UZKaXppxlGbiN59qBvUR_U",authDomain:"araujotech-catalogos.firebaseapp.com",projectId:"araujotech-catalogos",storageBucket:"araujotech-catalogos.firebasestorage.app",messagingSenderId:"501170505971",appId:"1:501170505971:web:fd3a1c1578b3e1b93bcf86"};
+const FBV="10.12.2",USER_DOMAIN="araujotechsistemas.com",PASS0="123456";
+const FB_ON=!!window.AG_FAKE||(!!AG_ID&&location.protocol!=="file:"&&!/demo/i.test(location.pathname));
+const userEmail=u=>{u=String(u||"").trim().toLowerCase();return u.includes("@")?u:u+"@"+USER_DOMAIN};
+let FA=null;
 const KEY="salon_aurora_v2";
 let sb=null, pushTimer=null, pulling=false, lastRemote="", subscribed=false, themeSet=false;
 let LANG=null, THEME="system";
@@ -633,7 +640,7 @@ normalize(S);
 if(S.sample&&S.cfg.name==="Salón Aurora"){S.cfg.name="Barbería Loli";S.cfg.sub="";if(!S.cfg.logo)S.cfg.logo=LOLI_LOGO;S.cfg.brand="#1c1c1e";S.cfg.instagram=""}
 
 const ui={view:"dash",date:today(),agMode:"grid",q:"",cf:"all",period:"month",cashDate:today(),user:null,loginSel:null,pin:"",pinErr:false,cloud:"off",newBookings:0,cloudMode:false,authErr:"",authEmail:"",wz:null};
-ui.cloudMode=!!(sbCfg().url&&sbCfg().key);
+ui.cloudMode=FB_ON||!!(sbCfg().url&&sbCfg().key);
 if(!ui.cloudMode){try{const u=sessionStorage.getItem(KEY+"_user");if(u)ui.user=JSON.parse(u)}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){} cloudPush();}
 try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
@@ -712,7 +719,7 @@ function renderWizard(){
     <div><button class="btn" data-act="wzAdd">${ic("plus")}${t("addMember")}</button></div>`;
   if(w.step===3) body=`<h2 class="wz-h">${t("ownerStep")}</h2>
     <div class="field"><label for="wz-owner">${t("ownerName")}</label><input class="inp" id="wz-owner" value="${esc(w.owner)}"></div>
-    <div class="field"><label for="wz-pin">${t("ownerPin")}</label><input class="inp num" id="wz-pin" inputmode="numeric" maxlength="4" value="${esc(w.pin)}"></div>`;
+    ${ui.cloudMode?"":`<div class="field"><label for="wz-pin">${t("ownerPin")}</label><input class="inp num" id="wz-pin" inputmode="numeric" maxlength="4" value="${esc(w.pin)}"></div>`}`;
   $("#root").innerHTML=`<div class="login"><div class="box wide">
     <div class="row" style="justify-content:space-between"><span class="eyebrow">${t("stepN")} ${w.step+1} / 4</span>${prefsBar()}</div>
     <div class="wz-steps">${[0,1,2,3].map(i=>`<i class="${i<=w.step?"on":""}"></i>`).join("")}</div>
@@ -731,7 +738,7 @@ function wzFinish(){
     pin:String(1000+Math.floor(Math.random()*9000)),hours:defHours(),svc:[],email:""}));
   S=normalize({sample:false,welcomeSeen:true,cfg:Object.assign(baseCfg(lang),{name:w.name.trim(),sub:"",logo:w.logo,cover:w.cover||"",brand:w.brand,phone:w.phone.trim(),address:w.address.trim()}),
     users:[{id:"u1",name:w.owner.trim(),role:"owner",pin:w.pin}],pros,services,products:[],clients:[],appts:[],sales:[],expenses:[],closings:{}});
-  ui.wz=null;ui.user={id:"u1",name:S.users[0].name,role:"owner"};try{sessionStorage.setItem(KEY+"_user",JSON.stringify(ui.user))}catch(e){}
+  ui.wz=null;ui.user=ui.cloudMode&&ui.user?Object.assign(ui.user,{name:S.users[0].name||ui.user.name}):{id:"u1",name:S.users[0].name,role:"owner"};try{sessionStorage.setItem(KEY+"_user",JSON.stringify(ui.user))}catch(e){}
   ui.view="dash";save();applyBrand();render();
   modal(t("pinsTitle"),`<p class="help" style="margin:0;font-size:13px">${t("pinsHelp")}</p><div class="panel"><div class="list">${pros.map(p=>`<div class="li"><span class="avatar" style="background:${p.color};color:#fff">${avIn(p)}</span><div class="grow"><div class="t1">${esc(p.name)}</div><div class="t2">${esc(p.role)}</div></div><b class="num" style="font-size:18px;letter-spacing:.1em">${p.pin}</b></div>`).join("")}</div></div>`,
     `<button class="btn pri" data-act="closeM">${t("close")}</button>`,"sm");
@@ -765,10 +772,10 @@ function tryLogin(){
 function renderAuth(){
   $("#root").innerHTML=`<div class="login"><div class="box">
     <div class="row" style="justify-content:flex-end">${prefsBar()}</div>${brandBlock()}
-    <div class="field"><label for="au-email">${t("email")}</label><input class="inp" id="au-email" type="email" autocomplete="username" value="${esc(ui.authEmail)}"></div>
+    <div class="field"><label for="au-email">${FB_ON?(LG()!=="pt"?"Usuario":"Usuário"):t("email")}</label><input class="inp" id="au-email" type="${FB_ON?"text":"email"}" autocapitalize="off" spellcheck="false" autocomplete="username" value="${esc(ui.authEmail)}"></div>
     <div class="field"><label for="au-pass">${t("password")}</label><input class="inp" id="au-pass" type="password" autocomplete="current-password"></div>
     ${ui.authErr?`<div class="warnbox">${ic("alert")}${esc(ui.authErr)}</div>`:""}
-    <button class="btn pri" data-act="authLogin" ${sb?"":"disabled"}>${ic("lock")}${sb?t("login"):t("connecting")}</button>
+    <button class="btn pri" data-act="authLogin" ${sb||FA?"":"disabled"}>${ic("lock")}${sb||FA?t("login"):t("connecting")}</button>
     <p class="help" style="text-align:center;margin:0">Desarrollado por <b>Araújo Tech</b></p></div></div>`;
 }
 
@@ -1070,7 +1077,7 @@ create policy "equipo_actualiza" on reservas for update to authenticated using (
 alter publication supabase_realtime add table salon_state, reservas;`;
 
 V.settings=()=>{
-  const c=S.cfg, fixed=!!SB_URL_FIXED;
+  const c=S.cfg, fixed=FB_ON||!!SB_URL_FIXED;
   return top(t("settings"),"","")+`<div class="stack" style="max-width:780px">
   <section class="panel"><div class="panel-b row" style="justify-content:space-between;gap:12px;flex-wrap:wrap"><div><span class="eyebrow">${LG()!=="pt"?"Su plan":"Seu plano"}</span><div style="font-size:18px;font-weight:700">${PLAN.n}</div><small class="help">${PLAN.pros?proLimitMsg():(LG()!=="pt"?"Profesionales ilimitados.":"Profissionais ilimitados.")}</small></div>${PLAN_ID==="premium"?"":`<a class="btn" href="https://wa.me/${AT_WA}?text=${upMsg()}" target="_blank" rel="noopener">${ic("chat")}${LG()!=="pt"?"Mejorar plan":"Melhorar plano"}</a>`}</div></section>
   <section class="panel"><div class="panel-h"><h2>${t("appearance")}</h2></div><div class="panel-b" style="display:flex;flex-direction:column;gap:16px">
@@ -1118,8 +1125,8 @@ V.settings=()=>{
     <code class="sql">${esc(SQL)}</code><div><button class="btn sm" data-act="copySql">${ic("copy")}${t("sqlCopy")}</button></div>
     <div class="grid2"><div class="field"><label for="c-sburl">${t("cloudUrl")}</label><input class="inp" id="c-sburl" placeholder="https://xxxx.supabase.co" value="${esc(c.sb.url)}"></div>
     <div class="field"><label for="c-sbkey">${t("cloudKey")}</label><input class="inp" id="c-sbkey" placeholder="eyJ..." value="${esc(c.sb.key)}"></div></div>`}
-    <div class="field"><label for="c-owners">${t("ownerEmails")}</label><input class="inp" id="c-owners" value="${esc((c.ownerEmails||[]).join(", "))}"></div>
-    <div class="row">${fixed?`<button class="btn" data-act="saveOwners">${t("save")}</button>`:`<button class="btn pri" data-act="sbConnect">${ic("cloud")}${t("connect")}</button>${c.sb.url?`<button class="btn" data-act="sbDisconnect">${t("disconnect")}</button>`:""}`}</div>
+    ${FB_ON?"":`<div class="field"><label for="c-owners">${t("ownerEmails")}</label><input class="inp" id="c-owners" value="${esc((c.ownerEmails||[]).join(", "))}"></div>`}
+    <div class="row">${FB_ON?"":fixed?`<button class="btn" data-act="saveOwners">${t("save")}</button>`:`<button class="btn pri" data-act="sbConnect">${ic("cloud")}${t("connect")}</button>${c.sb.url?`<button class="btn" data-act="sbDisconnect">${t("disconnect")}</button>`:""}`}</div>
   </div></section>
   <section class="panel"><div class="panel-h"><h2>${t("backup")}</h2></div><div class="panel-b"><div class="row">
     <button class="btn" data-act="exportB">${ic("download")}${t("exportB")}</button>
@@ -1149,6 +1156,8 @@ V.more=()=>{
 function render(){
   applyTheme();
   if(ui.cloudMode&&!ui.user){renderAuth();return}
+  if(ui.cloudMode&&ui.mc){renderNewPass();return}
+  if(ui.cloudMode&&ui.wz){renderWizard();return}
   if(!ui.cloudMode&&!S.welcomeSeen){ui.wz?renderWizard():renderWelcome();return}
   if(!ui.user){renderLogin();return}
   if(!isOwner()&&!NAV_PRO.some(([v])=>v===ui.view)&&ui.view!=="more")ui.view="dash";
@@ -1403,7 +1412,8 @@ function editPro(p){
     <div class="field"><label for="r-role">${t("role")}</label><input class="inp" id="r-role" value="${esc(p.role)}"></div></div>
     <div class="grid3"><div class="field"><label for="r-com">${t("commission")}</label><input class="inp num" type="number" min="0" max="100" id="r-com" value="${p.commission}"></div>
     <div class="field"><label for="r-pin">${t("pin")}</label><input class="inp num" id="r-pin" inputmode="numeric" maxlength="4" value="${esc(p.pin||"0000")}"></div>
-    <div class="field"><label for="r-email">${t("proEmail")}</label><input class="inp" id="r-email" type="email" value="${esc(p.email||"")}"></div></div>
+    ${FB_ON?`<div class="field"><label for="r-login">${LG()!=="pt"?"Usuario para entrar":"Usuário para entrar"}</label><input class="inp" id="r-login" autocapitalize="off" spellcheck="false" value="${esc(p.login||"")}" ${p.login?"readonly":""} placeholder="${LG()!=="pt"?"ej.: laura":"ex.: laura"}"></div>`:`<div class="field"><label for="r-email">${t("proEmail")}</label><input class="inp" id="r-email" type="email" value="${esc(p.email||"")}"></div>`}</div>
+    ${FB_ON?`<small class="help">${p.login?(LG()!=="pt"?"Entra con este usuario y su contraseña.":"Entra com este usuário e a senha dele."):(LG()!=="pt"?"Al guardar se crea el acceso con la contraseña provisoria 123456; al entrar, el sistema le pide crear la suya.":"Ao salvar, o acesso é criado com a senha provisória 123456; ao entrar, o sistema pede para criar a dele.")}</small>`:""}
     <div class="field"><label>${t("proHours")}</label><div class="hours-grid" id="r-hours">${[1,2,3,4,5,6,0].map(i=>{const h=p.hours[i];return `<div class="hrow ${h?"":"off"}" data-d="${i}"><label><input type="checkbox" ${h?"checked":""}>${DL[i]}</label><input class="inp" type="time" value="${h?h[0]:S.cfg.open}" aria-label="${t("open")} ${DL[i]}"><input class="inp" type="time" value="${h?h[1]:S.cfg.close}" aria-label="${t("closeT")} ${DL[i]}"></div>`}).join("")}</div></div>
     <div class="field"><label>${t("proSvcs")}</label><div class="svc-pick" id="r-svcs">${S.services.map(s=>`<label><input type="checkbox" value="${s.id}" ${has.includes(s.id)?"checked":""}><span class="grow">${esc(s.name)} <small>· ${esc(s.cat||"")}</small></span></label>`).join("")}</div><small class="help">${t("proSvcsHelp")}</small></div>
     <div class="field"><label>${t("color")}</label><div class="colors" id="r-col">${PRO_COLORS.map(c=>`<button type="button" data-c="${c}" style="--pc:${c}" class="${c===color?"on":""}" aria-label="${c}"></button>`).join("")}</div></div>
@@ -1417,10 +1427,88 @@ function editPro(p){
     const hours={};document.querySelectorAll("#r-hours .hrow").forEach(r=>{const on=r.querySelector("input[type=checkbox]").checked;const[a,b]=r.querySelectorAll("input[type=time]");hours[r.dataset.d]=on?[a.value,b.value]:null});
     const svc=[...document.querySelectorAll("#r-svcs input:checked")].map(i=>i.value);
     const wantAct=$("#r-act").checked;if(wantAct&&(isNew||p.active===false)&&S.pros.filter(x=>x.active!==false&&x!==p).length>=proLimit()){toast(proLimitMsg());return}
-    Object.assign(p,{name:n,role:$("#r-role").value.trim(),commission:+$("#r-com").value||0,pin:($("#r-pin").value.replace(/\D/g,"")||"0000").slice(0,4),email:$("#r-email").value.trim().toLowerCase(),color,active:$("#r-act").checked,hours,svc,photo});
-    if(isNew){p.id=uid();S.pros.push(p)}save();closeM();render();toast(t("saved"))};
+    Object.assign(p,{name:n,role:$("#r-role").value.trim(),commission:+$("#r-com").value||0,pin:($("#r-pin").value.replace(/\D/g,"")||"0000").slice(0,4),email:FB_ON?(p.email||""):$("#r-email").value.trim().toLowerCase(),color,active:$("#r-act").checked,hours,svc,photo});
+    if(isNew){p.id=uid();S.pros.push(p)}
+    const lg=FB_ON&&$("#r-login")&&!p.login?$("#r-login").value.trim().toLowerCase().replace(/[^a-z0-9._-]/g,""):"";
+    if(lg){const es=LG()!=="pt";FA.createUser(lg,PASS0,{role:"pro",proId:p.id,name:p.name}).then(()=>{p.login=lg;save();render();toast(es?`Acceso creado: ${lg} · 123456`:`Acesso criado: ${lg} · 123456`)}).catch(e=>{console.warn(e);toast(/in-use/.test(String(e.code||e.message))?(es?"Ese usuario ya existe. Elegí otro.":"Esse usuário já existe. Escolha outro."):(es?"No se pudo crear el acceso.":"Não foi possível criar o acesso."))})}
+    save();closeM();render();toast(t("saved"))};
   if(!isNew)$("#r-del").onclick=()=>{const u=snap();S.pros=S.pros.filter(x=>x.id!==p.id);save();closeM();render();undoable(t("deleted"),u)};
 }
+
+
+/* ---------- Nube Araújo Tech (Firebase) ---------- */
+function fbApi(A,F,U,app,db,auth){const {doc,getDoc,setDoc,updateDoc,collection,query,where,onSnapshot}=F;const base=["agendas",AG_ID];
+ return {
+  onAuth:cb=>U.onAuthStateChanged(auth,u=>cb(u?{uid:u.uid,email:u.email}:null)),
+  login:async(e,p)=>{const c=await U.signInWithEmailAndPassword(auth,e,p);return {uid:c.user.uid,email:c.user.email}},
+  logout:()=>U.signOut(auth),
+  myAccess:async uid=>{const s=await getDoc(doc(db,"agendaUsers",uid));return s.exists()?s.data():null},
+  getState:async()=>{const s=await getDoc(doc(db,...base,"state","main"));return s.exists()?s.data().json:null},
+  putState:j=>setDoc(doc(db,...base,"state","main"),{json:j,at:new Date().toISOString()}),
+  putPub:j=>setDoc(doc(db,"agendaPub",AG_ID),{json:j,at:new Date().toISOString()}),
+  getImg:async h=>{const s=await getDoc(doc(db,...base,"img",h));return s.exists()?s.data().d:""},
+  putImg:(h,d)=>setDoc(doc(db,...base,"img",h),{d}),
+  watchState:cb=>onSnapshot(doc(db,...base,"state","main"),s=>{if(s.exists()&&!s.metadata.hasPendingWrites)cb(s.data().json)}),
+  watchBookings:cb=>onSnapshot(query(collection(db,...base,"reservas"),where("p","==",false)),q=>cb(q.docs.map(d=>{let r={};try{r=JSON.parse(d.data().json||"{}")}catch(e){}r.id=d.id;return r}))),
+  markBooking:id=>updateDoc(doc(db,...base,"reservas",id),{p:true}),
+  setMyPass:async np=>{const u=auth.currentUser;await U.updatePassword(u,np);try{await updateDoc(doc(db,"agendaUsers",u.uid),{mc:false})}catch(e){console.warn("mc",e)}},
+  createUser:async(login,pass,extra)=>{const sec=A.getApps().find(a=>a.name==="agsec")||A.initializeApp(FB_CFG,"agsec");const sa=U.getAuth(sec);
+   const uid=(await U.createUserWithEmailAndPassword(sa,userEmail(login),pass)).user.uid;try{await U.signOut(sa)}catch(e){}
+   await setDoc(doc(db,"agendaUsers",uid),Object.assign({ag:AG_ID,email:userEmail(login),mc:pass===PASS0},extra));return uid}
+ }}
+async function fbReady(){if(FA)return FA;if(window.AG_FAKE){FA=window.AG_FAKE;return FA}
+ const b="https://www.gstatic.com/firebasejs/"+FBV+"/";const [A,F,U]=await Promise.all([import(b+"firebase-app.js"),import(b+"firebase-firestore.js"),import(b+"firebase-auth.js")]);
+ const app=A.getApps().find(a=>a.name==="ag")||A.initializeApp(FB_CFG,"ag");FA=fbApi(A,F,U,app,F.getFirestore(app),U.getAuth(app));return FA}
+/* imágenes van en documentos aparte (límite de tamaño de cada documento) */
+const IMG={},IMG_UP=new Set();
+function hImg(x){let h=2166136261;for(let i=0;i<x.length;i+=7){h^=x.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)+x.length.toString(36)}
+function extImgs(o){const imgs={};const w=v=>{if(typeof v==="string"&&v.startsWith("data:image")&&v.length>1500){const h=hImg(v);imgs[h]=v;IMG[h]=v;return "img:"+h}if(Array.isArray(v))return v.map(w);if(v&&typeof v==="object"){const r={};for(const k in v)r[k]=w(v[k]);return r}return v};return {o:w(o),imgs}}
+async function resImgs(o){const need=new Set();const sc=v=>{if(typeof v==="string"&&v.startsWith("img:"))need.add(v.slice(4));else if(Array.isArray(v))v.forEach(sc);else if(v&&typeof v==="object")Object.values(v).forEach(sc)};sc(o);
+ await Promise.all([...need].map(async h=>{IMG_UP.add(h);if(!(h in IMG)){try{IMG[h]=await FA.getImg(h)||""}catch(e){IMG[h]=""}}}));
+ const w=v=>{if(typeof v==="string"&&v.startsWith("img:"))return IMG[v.slice(4)]||"";if(Array.isArray(v))return v.map(w);if(v&&typeof v==="object"){const r={};for(const k in v)r[k]=w(v[k]);return r}return v};return w(o)}
+async function upImgs(imgs){for(const h in imgs){if(IMG_UP.has(h))continue;await FA.putImg(h,imgs[h]);IMG_UP.add(h)}}
+async function fbPush(){
+  try{let data=localPlain(),json=JSON.stringify(data);
+    if(json===lastRemote){setCloud("on");return}
+    const cur=await FA.getState();const remote=cur?await resImgs(JSON.parse(cur)):null;
+    if(remote&&lastRemote&&JSON.stringify(remote)!==lastRemote){data=merge3(JSON.parse(lastRemote),data,remote);json=JSON.stringify(data);adoptMerged(JSON.parse(json))}
+    const e1=extImgs(data);await upImgs(e1.imgs);await FA.putState(JSON.stringify(e1.o));lastRemote=json;
+    const e2=extImgs(publicInfo());await upImgs(e2.imgs);await FA.putPub(JSON.stringify(e2.o));setCloud("on");
+  }catch(e){console.warn(e);setCloud("err")}
+}
+function askUpload(){const es=LG()!=="pt";return new Promise(res=>{
+  modal(es?"Subir los datos de este equipo":"Enviar os dados deste aparelho",`<p class="help" style="margin:0;font-size:14px">${es?`Este equipo tiene datos guardados: <b>${S.clients.length}</b> clientes, <b>${S.appts.length}</b> turnos y <b>${S.pros.length}</b> profesionales. ¿Los subimos a la nube del negocio? Desde ahí aparecen en todos los equipos.`:`Este aparelho tem dados guardados: <b>${S.clients.length}</b> clientes, <b>${S.appts.length}</b> horários e <b>${S.pros.length}</b> profissionais. Enviamos para a nuvem do negócio? De lá aparecem em todos os aparelhos.`}</p><p class="help" style="margin:8px 0 0">${es?"Hacelo en el equipo donde está la agenda real del negocio.":"Faça isso no aparelho onde está a agenda real do negócio."}</p>`,
+   `<button class="btn" id="up-no">${es?"Empezar sin datos":"Começar sem dados"}</button><button class="btn pri" id="up-yes">${ic("cloud")}${es?"Subir a la nube":"Enviar para a nuvem"}</button>`,"sm");
+  $("#up-yes").onclick=()=>{closeM();res(true)};$("#up-no").onclick=()=>{closeM();res(false)}})}
+let fbWatch=false;
+async function fbAfterAuth(user){
+  let acc=null;try{acc=await FA.myAccess(user.uid)}catch(e){console.warn(e)}
+  if(!acc||acc.ag!==AG_ID){ui.user=null;ui.authErr=t("noAccess");try{await FA.logout()}catch(e){}render();return}
+  let cur=null;try{cur=await FA.getState()}catch(e){ui.authErr=t("cloudErr");ui.cloud="err";render();return}
+  let fresh=false;
+  if(cur){lastRemote="";applyRemote(await resImgs(JSON.parse(cur)))}
+  else{lastRemote="";fresh=true;if(hasRealData()){const ok=await askUpload();if(!ok){S=normalize({});S.sample=false;ui.wz=newWz()}}else{S.sample=false;ui.wz=newWz()}S.welcomeSeen=true}
+  if(acc.role==="owner")ui.user={id:"owner:"+user.uid,name:(S.users[0]&&S.users[0].name)||acc.name||"Admin",role:"owner"};
+  else{const p=S.pros.find(p=>p.id===acc.proId&&p.active!==false);if(!p){ui.user=null;ui.authErr=t("noAccess");try{await FA.logout()}catch(e){}render();return}ui.user={id:"pro_"+p.id,name:p.name,role:"pro",proId:p.id}}
+  let ok0=false;try{ok0=!!localStorage.getItem(KEY+"_mc_"+user.uid)}catch(e){}
+  ui.mc=!!acc.mc&&!ok0;ui.authErr="";ui.cloud="on";sb={fb:true};
+  if(fresh&&!ui.wz)await fbPush();
+  if(!fbWatch){fbWatch=true;FA.watchState(async j=>{try{applyRemote(await resImgs(JSON.parse(j)))}catch(e){console.warn(e)}});FA.watchBookings(rows=>{if(rows.length)importBookings(rows)})}
+  ui.view="dash";render();
+}
+async function fbInit(){ui.cloudMode=true;ui.user=null;render();
+  try{await fbReady()}catch(e){console.warn(e);ui.cloud="err";ui.authErr=t("cloudErr");render();return}
+  let busy=false;FA.onAuth(async u=>{if(!u){ui.user=null;ui.mc=false;render();return}if(!ui.user&&!busy){busy=true;try{await fbAfterAuth(u)}finally{busy=false}}});
+}
+function renderNewPass(){const es=LG()!=="pt";
+  $("#root").innerHTML=`<div class="login"><div class="box">
+    <div class="row" style="justify-content:flex-end">${prefsBar()}</div>${brandBlock()}
+    <div><h1>${es?"Creá tu contraseña":"Crie sua senha"}</h1><p class="help" style="margin:6px 0 0;font-size:14px">${es?"Por seguridad, cambiá la contraseña provisoria por una solo tuya. La vas a usar para entrar de ahora en adelante.":"Por segurança, troque a senha provisória por uma só sua. Você vai usar ela para entrar daqui em diante."}</p></div>
+    <div class="field"><label for="np-a">${es?"Nueva contraseña":"Nova senha"}</label><input class="inp" id="np-a" type="password" autocomplete="new-password"></div>
+    <div class="field"><label for="np-b">${es?"Repetí la nueva contraseña":"Repita a nova senha"}</label><input class="inp" id="np-b" type="password" autocomplete="new-password"></div>
+    ${ui.authErr?`<div class="warnbox">${ic("alert")}${esc(ui.authErr)}</div>`:""}
+    <button class="btn pri" data-act="setNewPass">${ic("lock")}${es?"Guardar y entrar":"Salvar e entrar"}</button>
+    <p class="help" style="text-align:center;margin:0">Desarrollado por <b>Araújo Tech</b></p></div></div>`}
 
 /* ---------- Nube (Supabase) ---------- */
 function publicInfo(){
@@ -1433,7 +1521,7 @@ function publicInfo(){
 }
 function cloudPush(){
   if(!sb||pulling||!ui.user)return;clearTimeout(pushTimer);setCloud("saving");
-  pushTimer=setTimeout(pushNow,800);
+  pushTimer=setTimeout(FB_ON?fbPush:pushNow,800);
 }
 /* Junta tres versiones: la última sincronizada (base), la de este equipo (local) y la de la nube (remote).
    Gana el cambio de cada uno en lo que tocó: dos personas pueden guardar al mismo tiempo sin borrar lo del otro. */
@@ -1483,11 +1571,12 @@ async function importBookings(rows){
     if(!proId){const d=toMin(r.hora);proId=(activePros().find(p=>!S.appts.some(a=>a.proId===p.id&&a.date===r.fecha&&live(a)&&d<toMin(a.start)+a.dur&&d+dur>toMin(a.start)))||activePros()[0]||{}).id}
     const items=(Array.isArray(r.productos)?r.productos:[]).map(i=>{const p=S.products.find(x=>x.id===i.id);return p?{id:p.id,name:p.name,price:p.price,qty:Math.max(1,+i.qty||1)}:null}).filter(Boolean);
     S.appts.push({id:"rv_"+r.id,clientId:c.id,proId,serviceIds:svs.map(s=>s.id),date:r.fecha,start:r.hora,dur,price:r.precio||svs.reduce((s,v)=>s+v.price,0),status:"pending",notes:"Reserva online"+(items.length?" · "+(LG()!=="pt"?"Separar: ":"Separar: ")+items.map(i=>i.qty+"× "+i.name).join(", "):""),paid:null,deposit:0,...(items.length?{items}:{})});
-    n++;try{await sb.from("reservas").update({procesada:true}).eq("id",r.id)}catch(e){}}
+    n++;try{if(FB_ON)await FA.markBooking(r.id);else await sb.from("reservas").update({procesada:true}).eq("id",r.id)}catch(e){}}
   if(n){ui.newBookings+=n;save();if(!$("#layer").innerHTML)render()}
 }
 function loadSbLib(){return new Promise(res=>{if(window.supabase)return res();const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";s.onload=res;s.onerror=res;document.head.appendChild(s)})}
 async function cloudInit(){
+  if(FB_ON)return fbInit();
   const c=sbCfg();if(!c.url||!c.key)return;
   ui.cloudMode=true;ui.user=null;render();
   await loadSbLib();
@@ -1532,14 +1621,19 @@ const A={
   wzNext:()=>{readWz();const w=ui.wz;
     if(w.step===1&&!w.name.trim())return wzErr(t("needName"));
     if(w.step===2&&!w.team.some(m=>m.name.trim()))return wzErr(t("needTeam"));
-    if(w.step===3){if(!w.owner.trim())return wzErr(t("needName"));if(!/^\d{4}$/.test(w.pin))return wzErr(t("needPin"));return wzFinish()}
+    if(w.step===3){if(!w.owner.trim())return wzErr(t("needName"));if(!ui.cloudMode&&!/^\d{4}$/.test(w.pin))return wzErr(t("needPin"));return wzFinish()}
     w.step++;renderWizard();window.scrollTo(0,0)},
   selUser:el=>{ui.loginSel=el.dataset.id;ui.pin="";ui.pinErr=false;renderLogin()},
   pin:el=>{const n=el.dataset.n;if(n==="del")ui.pin=ui.pin.slice(0,-1);else if(n==="ok"){tryLogin();return}else if(ui.pin.length<4)ui.pin+=n;ui.pinErr=false;if(ui.pin.length===4){tryLogin();return}renderLogin()},
   authLogin:async el=>{const email=$("#au-email").value.trim(),pass=$("#au-pass").value;ui.authEmail=email;if(!email||!pass)return;el.disabled=true;
+    if(FB_ON){try{await FA.login(userEmail(email),pass)}catch(e){console.warn(e);ui.authErr=LG()!=="pt"?"Usuario o contraseña incorrectos.":"Usuário ou senha incorretos.";renderAuth()}return}
     const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
     if(error){ui.authErr=t("badLogin");renderAuth();return}await afterAuth(data.user)},
-  logout:async()=>{closeM();if(ui.cloudMode&&sb){try{await sb.auth.signOut()}catch(e){}}ui.user=null;ui.loginSel=null;ui.pin="";try{sessionStorage.removeItem(KEY+"_user")}catch(e){}render()},
+  setNewPass:async el=>{const es=LG()!=="pt",a=$("#np-a").value,b=$("#np-b").value;const E=m=>{ui.authErr=m;renderNewPass()};
+    if(a.length<6)return E(es?"Usá al menos 6 caracteres.":"Use pelo menos 6 caracteres.");if(a!==b)return E(es?"Las dos contraseñas no son iguales.":"As duas senhas não são iguais.");if(a===PASS0)return E(es?"Elegí una contraseña distinta de 123456.":"Escolha uma senha diferente de 123456.");
+    el.disabled=true;try{await FA.setMyPass(a);try{localStorage.setItem(KEY+"_mc_"+(ui.user.id||"").split(":").pop(),"1")}catch(e){}ui.mc=false;ui.authErr="";render();toast(es?"Contraseña creada":"Senha criada")}catch(e){console.warn(e);el.disabled=false;
+      if(/recent-login/.test(String(e.code||e.message))){E(es?"Por seguridad, salí y entrá de nuevo con la contraseña provisoria.":"Por segurança, saia e entre de novo com a senha provisória.");setTimeout(()=>A.logout(),2500)}else E(t("cloudErr"))}},
+  logout:async()=>{closeM();if(FB_ON&&FA){try{await FA.logout()}catch(e){}}else if(ui.cloudMode&&sb){try{await sb.auth.signOut()}catch(e){}}ui.user=null;ui.loginSel=null;ui.pin="";try{sessionStorage.removeItem(KEY+"_user")}catch(e){}render()},
   newAppt:el=>{const now=new Date(),step=+S.cfg.step||30;let m=Math.ceil((now.getHours()*60+now.getMinutes())/step)*step;
     if(m<toMin(S.cfg.open)||m>=toMin(S.cfg.close))m=toMin(S.cfg.open);
     apptForm({date:ui.view==="agenda"?ui.date:today(),start:toHM(m),proId:isOwner()?activePros()[0]?.id:ui.user.proId,status:"confirmed",serviceIds:[],clientId:el.dataset.client||"",deposit:0})},
@@ -1617,7 +1711,7 @@ document.addEventListener("change",e=>{
   if(id==="photoFile"){[...e.target.files].slice(0,6-S.cfg.photos.length).forEach(f=>compressImg(f,900,false,d=>{if(S.cfg.photos.length<6){S.cfg.photos.push(d);save();render()}}))}
   if(id==="impFile"){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.cfg||!Array.isArray(d.appts))throw 0;S=normalize(d);S.welcomeSeen=true;save();applyBrand();render();toast(t("imported"))}catch(x){toast(t("badFile"))}};r.readAsText(f)}
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeM();if(e.key==="Enter"&&(e.target.id==="au-pass"||e.target.id==="au-email")){const b=$("[data-act=authLogin]");if(b&&!b.disabled)A.authLogin(b)}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeM();if(e.key==="Enter"&&(e.target.id==="au-pass"||e.target.id==="au-email")){const b=$("[data-act=authLogin]");if(b&&!b.disabled)A.authLogin(b)}if(e.key==="Enter"&&(e.target.id==="np-a"||e.target.id==="np-b")){const b=$("[data-act=setNewPass]");if(b&&!b.disabled)A.setNewPass(b)}});
 applyBrand();
 render();
 cloudInit();
